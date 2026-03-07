@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { useVapi } from "../hooks/useVapi";
 import CallerVerification from '../components/CallerVerification';
 
 const css = `
@@ -88,6 +89,7 @@ export default function Dialler() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("keypad");
   const [dialVal, setDialVal] = useState("");
+  const { callActive, callStatus, isMuted, startCall: vapiStart, endCall: vapiEnd, toggleMute } = useVapi();
   const [calling, setCalling] = useState(false);
   const [callingName, setCallingName] = useState("");
   const [timer, setTimer] = useState(0);
@@ -100,6 +102,7 @@ export default function Dialler() {
   }, [calling]);
 
   const startCall = (num, name = "") => {
+    vapiStart({ name: "eNative Assistant", firstMessage: `Connecting you to ${name || num} via eNative.`, model: { provider: "openai", model: "gpt-3.5-turbo", messages: [{ role: "system", content: "You are eNative, an AI VoIP assistant for pan-African calls." }] }, voice: { provider: "11labs", voiceId: "rachel" } });
     setDialVal(num); setCallingName(name); setCalling(true); setTab("keypad");
   };
 
