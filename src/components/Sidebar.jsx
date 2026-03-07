@@ -29,7 +29,7 @@ export default function Sidebar() {
   }, [])
 
   return (
-    <div className="sidebar">
+    <div className="sidebar" style={{display:"flex",flexDirection:"column",width:"72px",minWidth:"72px",height:"100vh"}}>
       <div className="sidebar-logo" onClick={() => navigate("/")}>en</div>
       {NAV.map((n, i) => (
         <button
