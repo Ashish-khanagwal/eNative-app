@@ -9,26 +9,15 @@ import Dialler from './pages/Dialler'
 
 export default function App() {
   const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) {
-        const { data } = await supabase.from('profiles').select('*').eq('user_id', u.id).single()
-        setProfile(data)
-      }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) {
-        const { data } = await supabase.from('profiles').select('*').eq('user_id', u.id).single()
-        setProfile(data)
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -39,16 +28,10 @@ export default function App() {
     </div>
   )
 
-  const getHome = () => {
-    if (!user) return <Navigate to="/login" />
-    if (!profile?.full_name) return <Navigate to="/setup" />
-    return <Navigate to="/contacts" />
-  }
-
   return (
     <Routes>
-      <Route path="/" element={getHome()} />
-      <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+      <Route path="/" element={user ? <Navigate to="/contacts" /> : <Navigate to="/login" />} />
+      <Route path="/login" element={user ? <Navigate to="/contacts" /> : <Login />} />
       <Route path="/setup" element={user ? <ProfileSetup /> : <Navigate to="/login" />} />
       <Route path="/contacts" element={user ? <Contacts /> : <Navigate to="/login" />} />
       <Route path="/dialler" element={user ? <Dialler /> : <Navigate to="/login" />} />
