@@ -1,190 +1,148 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import BadgeIcon from '../components/BadgeIcon'
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg: #050507; --surface: #08090d; --surface2: #0c0d12; --border: #111116; --border2: #181820; --accent: #c084fc; --accent2: #60d8fa; --accent3: #6ee7b7; --text: rgba(255,255,255,0.93); --mid: rgba(255,255,255,0.52); --dim: rgba(255,255,255,0.26); --red: #ff5f7e; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; margin: 0; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 68px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 22px 0; gap: 4px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+  .sidebar-logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #c084fc, #60d8fa); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 16px; color: #fff; }
+  .nav-btn { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; background: transparent; color: var(--dim); font-size: 17px; transition: all 0.18s; }
+  .nav-btn:hover { background: var(--surface2); color: var(--mid); }
+  .nav-btn.active { background: rgba(192,132,252,0.1); color: var(--accent); }
+  .sidebar-bottom { margin-top: auto; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #1a0a30, #0d0520); border: 1.5px solid rgba(192,132,252,0.25); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent); cursor: pointer; }
+  .main { margin-left: 68px; flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+  .dialler-wrap { width: 100%; max-width: 340px; }
+  .dial-title { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.28em; color: var(--dim); margin-bottom: 20px; text-transform: uppercase; text-align: center; }
+  .dial-display { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; padding: 24px 22px; margin-bottom: 24px; min-height: 80px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .dial-number { font-family: 'Share Tech Mono', monospace; font-size: 28px; letter-spacing: 0.08em; color: var(--text); min-height: 36px; }
+  .dial-sublabel { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--dim); letter-spacing: 0.12em; margin-top: 6px; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+  .key { height: 64px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border2); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; gap: 2px; }
+  .key:hover { background: rgba(192,132,252,0.08); border-color: rgba(192,132,252,0.2); }
+  .key:active { transform: scale(0.95); background: rgba(192,132,252,0.15); }
+  .key-num { font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700; line-height: 1; color: var(--text); }
+  .key-alpha { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 0.12em; color: var(--dim); }
+  .key-special { background: transparent; border-color: transparent; }
+  .key-special:hover { background: rgba(255,255,255,0.04); border-color: var(--border2); }
+  .dial-call-btn { width: 100%; height: 60px; border-radius: 16px; border: none; background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 20px rgba(34,197,94,0.3); transition: all 0.2s; margin-bottom: 12px; }
+  .dial-call-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(34,197,94,0.4); }
+  .dial-end-btn { width: 100%; height: 50px; border-radius: 14px; border: 1px solid rgba(255,95,126,0.2); background: rgba(255,95,126,0.06); color: var(--red); font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+  .dial-end-btn:hover { background: rgba(255,95,126,0.12); }
+  .incall-panel { text-align: center; padding: 20px 0 24px; }
+  .incall-av { width: 80px; height: 80px; border-radius: 50%; background: rgba(192,132,252,0.12); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 28px; color: var(--accent); margin: 0 auto 16px; animation: ring-pulse 2s ease-in-out infinite; }
+  @keyframes ring-pulse { 0%,100%{box-shadow:0 0 0 6px rgba(192,132,252,0.08),0 0 0 12px rgba(192,132,252,0.04)} 50%{box-shadow:0 0 0 10px rgba(192,132,252,0.12),0 0 0 20px rgba(192,132,252,0.05)} }
+  .incall-number { font-family: 'Share Tech Mono', monospace; font-size: 20px; color: var(--text); letter-spacing: 0.08em; margin-bottom: 6px; }
+  .incall-timer { font-family: 'Share Tech Mono', monospace; font-size: 32px; color: var(--accent3); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .incall-status { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--accent); letter-spacing: 0.2em; opacity: 0.7; animation: blink 1.5s infinite; margin-bottom: 20px; }
+  @keyframes blink { 0%,100%{opacity:0.7} 50%{opacity:0.3} }
+  .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 32px; margin-bottom: 24px; }
+  .wbar { width: 4px; border-radius: 2px; background: var(--accent); }
+`;
+
+const NAV = [
+  { icon: "⊞", path: "/" },
+  { icon: "📞", path: "/dialler" },
+  { icon: "👥", path: "/contacts" },
+  { icon: "💬", path: "#" },
+  { icon: "🏅", path: "#" },
+  { icon: "⚙", path: "#" },
+];
 
 const KEYS = [
-  ['1',''],['2','ABC'],['3','DEF'],
-  ['4','GHI'],['5','JKL'],['6','MNO'],
-  ['7','PQRS'],['8','TUV'],['9','WXYZ'],
-  ['*',''],['0','+'],['#',''],
-]
-
-function useTimer(active) {
-  const [secs, setSecs] = useState(0)
-  useEffect(() => {
-    if (!active) { setSecs(0); return }
-    const t = setInterval(() => setSecs(s => s + 1), 1000)
-    return () => clearInterval(t)
-  }, [active])
-  const m = String(Math.floor(secs / 60)).padStart(2,'0')
-  const s = String(secs % 60).padStart(2,'0')
-  return `${m}:${s}`
-}
+  ["1",""],["2","ABC"],["3","DEF"],
+  ["4","GHI"],["5","JKL"],["6","MNO"],
+  ["7","PQRS"],["8","TUV"],["9","WXYZ"],
+  ["*",""],["0","+"],["#",""],
+];
 
 export default function Dialler() {
-  const [dialVal, setDialVal] = useState('')
-  const [calling, setCalling] = useState(false)
-  const [muted, setMuted] = useState(false)
-  const [speaker, setSpeaker] = useState(false)
-  const [recentCalls] = useState([
-    {name:'Amara Kone',en:'E-0247',type:'outgoing',time:'2m ago',badge:'founder'},
-    {name:'Zara Mensah',en:'E-1102',type:'incoming',time:'1h ago',badge:'verified'},
-    {name:'Dev Patel',en:'E-2841',type:'missed',time:'3h ago',badge:'business'},
-  ])
-  const timer = useTimer(calling)
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const [dialVal, setDialVal] = useState("");
+  const [calling, setCalling] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    if (!calling) { setTimer(0); return; }
+    const iv = setInterval(() => setTimer(t => t + 1), 1000);
+    return () => clearInterval(iv);
+  }, [calling]);
 
   const pressKey = (k) => {
-    if (calling) return
-    if (k === '⌫') { setDialVal(v => v.slice(0,-1)); return }
-    setDialVal(v => (v + k).slice(0,12))
-  }
+    if (k === "⌫") { setDialVal(v => v.slice(0, -1)); return; }
+    setDialVal(v => (v + k).slice(0, 12));
+  };
 
-  const startCall = () => {
-    if (!dialVal) return
-    setCalling(true)
-  }
-
-  const endCall = () => {
-    setCalling(false)
-    setDialVal('')
-    setMuted(false)
-    setSpeaker(false)
-  }
-
-  const typeColor = (t) => t === 'missed' ? '#ff5f7e' : t === 'incoming' ? '#6ee7b7' : '#60d8fa'
-  const typeIcon = (t) => t === 'missed' ? '↙' : t === 'incoming' ? '↙' : '↗'
+  const m = String(Math.floor(timer / 60)).padStart(2, "0");
+  const s = String(timer % 60).padStart(2, "0");
 
   return (
-    <div style={{minHeight:'100vh',background:'#050507',color:'rgba(255,255,255,0.93)',fontFamily:"'Exo 2',sans-serif",paddingBottom:'80px'}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
-      .key-btn{background:#0c0d12;border:1px solid #1a1a24;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;user-select:none;}
-      .key-btn:active{background:#1a1a24;transform:scale(0.95);}
-      .action-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem;transition:all 0.2s;}
-      .action-circle:active{transform:scale(0.9);}
-      `}</style>
-
-      {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #111116',background:'#08090d'}}>
-        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-          <div style={{width:'32px',height:'32px',borderRadius:'8px',background:'linear-gradient(135deg,#c084fc,#60d8fa)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Rajdhani,sans-serif',fontWeight:'800',fontSize:'13px',color:'#fff'}}>en</div>
-          <span style={{fontFamily:'Share Tech Mono,monospace',fontSize:'10px',letterSpacing:'0.2em',color:'rgba(255,255,255,0.3)'}}>DIALLER</span>
+    <>
+      <style>{css}</style>
+      <div className="app">
+        <div className="sidebar">
+          <div className="sidebar-logo">en</div>
+          {NAV.map((n, i) => (
+            <button key={i}
+              className={`nav-btn${n.path === "/dialler" ? " active" : ""}`}
+              onClick={() => n.path !== "#" && navigate(n.path)}>
+              {n.icon}
+            </button>
+          ))}
+          <div className="sidebar-bottom"><div className="avatar">TO</div></div>
         </div>
-        <div onClick={() => navigate('/contacts')} style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',letterSpacing:'0.15em',color:'rgba(255,255,255,0.3)',cursor:'pointer',border:'1px solid #1a1a24',padding:'6px 12px',borderRadius:'20px'}}>CONTACTS</div>
-      </div>
+        <div className="main">
+          <div className="dialler-wrap">
+            <div className="dial-title">Dialler</div>
 
-      <div style={{maxWidth:'420px',margin:'0 auto',padding:'24px 20px'}}>
-
-        {/* Active Call Screen */}
-        {calling ? (
-          <div style={{textAlign:'center',padding:'32px 0'}}>
-            <div style={{width:'80px',height:'80px',borderRadius:'50%',background:'linear-gradient(135deg,#1a0a30,#0d0520)',border:'2px solid rgba(192,132,252,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'28px',color:'#c084fc',margin:'0 auto 16px',boxShadow:'0 0 40px rgba(192,132,252,0.2)'}}>
-              {dialVal.substring(0,2).toUpperCase()}
-            </div>
-            <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'1.4rem',marginBottom:'6px'}}>{dialVal}</div>
-            <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'11px',color:'#6ee7b7',letterSpacing:'0.1em',marginBottom:'8px'}}>● CONNECTED</div>
-            <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'1.2rem',color:'rgba(255,255,255,0.6)',letterSpacing:'0.15em',marginBottom:'40px'}}>{timer}</div>
-
-            {/* Call Controls */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'16px',marginBottom:'40px'}}>
-              {[
-                {icon: muted ? '🔇' : '🎙️', label: muted ? 'Unmute' : 'Mute', action: () => setMuted(!muted), active: muted},
-                {icon:'⌨️',label:'Keypad',action:()=>{},active:false},
-                {icon: speaker ? '🔊' : '🔈', label: speaker ? 'Speaker On' : 'Speaker', action: () => setSpeaker(!speaker), active: speaker},
-              ].map(c => (
-                <div key={c.label} onClick={c.action} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'8px',cursor:'pointer'}}>
-                  <div className="action-circle" style={{background: c.active ? 'rgba(192,132,252,0.2)' : '#0c0d12',border:`1px solid ${c.active ? 'rgba(192,132,252,0.4)' : '#1a1a24'}`}}>{c.icon}</div>
-                  <span style={{fontFamily:'Share Tech Mono,monospace',fontSize:'8px',letterSpacing:'0.1em',color:'rgba(255,255,255,0.3)'}}>{c.label}</span>
+            {calling ? (
+              <div className="incall-panel">
+                <div className="incall-av">📞</div>
+                <div className="incall-number">{dialVal}</div>
+                <div className="incall-timer">{m}:{s}</div>
+                <div className="incall-status">● NVIDIA RIVA · AI ACTIVE</div>
+                <div className="waveform">
+                  {Array(20).fill(0).map((_, i) => (
+                    <div key={i} className="wbar" style={{
+                      height: Math.floor(Math.random() * 24) + 8,
+                      animation: `waveAnim 0.8s ${(i * 0.06).toFixed(2)}s ease-in-out infinite alternate`
+                    }} />
+                  ))}
+                  <style>{`@keyframes waveAnim{from{transform:scaleY(0.3);opacity:0.5}to{transform:scaleY(1);opacity:1}}`}</style>
                 </div>
-              ))}
-            </div>
-
-            {/* End Call */}
-            <div onClick={endCall} style={{width:'72px',height:'72px',borderRadius:'50%',background:'#ff5f7e',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto',cursor:'pointer',fontSize:'1.6rem',boxShadow:'0 8px 32px rgba(255,95,126,0.4)',transition:'transform 0.2s'}}
-              onTouchStart={e => e.currentTarget.style.transform='scale(0.92)'}
-              onTouchEnd={e => e.currentTarget.style.transform='scale(1)'}>
-              📵
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Display */}
-            <div style={{background:'#08090d',border:'1px solid #111116',borderRadius:'16px',padding:'20px 24px',marginBottom:'20px',minHeight:'80px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-              {dialVal ? (
-                <>
-                  <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'1.8rem',letterSpacing:'0.15em',color:'rgba(255,255,255,0.93)',marginBottom:'4px'}}>{dialVal}</div>
-                  <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',letterSpacing:'0.2em',color:'rgba(255,255,255,0.25)'}}>ENUMBER</div>
-                </>
-              ) : (
-                <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'10px',letterSpacing:'0.2em',color:'rgba(255,255,255,0.2)'}}>ENTER ENUMBER TO CALL</div>
-              )}
-            </div>
-
-            {/* Keypad */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'10px',marginBottom:'16px'}}>
-              {KEYS.map(([num, alpha]) => (
-                <div key={num} className="key-btn" style={{height:'64px'}} onClick={() => pressKey(num)}>
-                  <span style={{fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'1.4rem',color:'rgba(255,255,255,0.93)',lineHeight:1}}>{num}</span>
-                  {alpha && <span style={{fontFamily:'Share Tech Mono,monospace',fontSize:'8px',letterSpacing:'0.15em',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>{alpha}</span>}
+              </div>
+            ) : (
+              <>
+                <div className="dial-display">
+                  <div className="dial-number">{dialVal || ""}</div>
+                  <div className="dial-sublabel">{dialVal ? "eNumber ready to call" : "Enter an eNumber"}</div>
                 </div>
-              ))}
-            </div>
-
-            {/* Bottom row: backspace, call, blank */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'28px'}}>
-              <div/>
-              <div onClick={startCall} style={{height:'64px',borderRadius:'50%',background: dialVal ? 'linear-gradient(135deg,#6ee7b7,#60d8fa)' : '#0c0d12',border:`1px solid ${dialVal ? 'transparent' : '#1a1a24'}`,display:'flex',alignItems:'center',justifyContent:'center',cursor: dialVal ? 'pointer' : 'default',fontSize:'1.4rem',transition:'all 0.2s',boxShadow: dialVal ? '0 8px 32px rgba(110,231,183,0.3)' : 'none'}}>
-                📞
-              </div>
-              <div className="key-btn" style={{height:'64px'}} onClick={() => pressKey('⌫')}>
-                <span style={{fontSize:'1.2rem',color:'rgba(255,255,255,0.4)'}}>⌫</span>
-              </div>
-            </div>
-
-            {/* Recent Calls */}
-            <div style={{marginTop:'8px'}}>
-              <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',letterSpacing:'0.25em',color:'rgba(255,255,255,0.25)',marginBottom:'12px'}}>RECENT CALLS</div>
-              <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
-                {recentCalls.map((c,i) => (
-                  <div key={i} onClick={() => setDialVal(c.en)} style={{background:'#08090d',border:'1px solid #111116',borderRadius:'12px',padding:'14px 16px',display:'flex',alignItems:'center',gap:'12px',cursor:'pointer',transition:'border-color 0.2s'}}>
-                    <div style={{width:'38px',height:'38px',borderRadius:'50%',background:'linear-gradient(135deg,#1a0a30,#0d0520)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'13px',color:'#c084fc',flexShrink:0,position:'relative'}}>
-                      {c.name.split(' ').map(n=>n[0]).join('')}
-                      <div style={{position:'absolute',bottom:'-2px',right:'-2px'}}>
-                        <BadgeIcon type={c.badge} size={10} />
-                      </div>
+                <div className="keypad">
+                  {KEYS.map(([num, alpha], i) => (
+                    <div key={i} className="key" onClick={() => pressKey(num)}>
+                      <span className="key-num">{num}</span>
+                      {alpha && <span className="key-alpha">{alpha}</span>}
                     </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:'600',fontSize:'0.88rem',marginBottom:'2px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name}</div>
-                      <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',color:'rgba(255,255,255,0.3)',letterSpacing:'0.08em'}}>{c.en}</div>
-                    </div>
-                    <div style={{textAlign:'right',flexShrink:0}}>
-                      <div style={{color:typeColor(c.type),fontSize:'0.75rem',marginBottom:'2px'}}>{typeIcon(c.type)} {c.type}</div>
-                      <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'8px',color:'rgba(255,255,255,0.2)'}}>{c.time}</div>
-                    </div>
+                  ))}
+                  <div className="key key-special" />
+                  <div className="key key-special" onClick={() => pressKey("⌫")}>
+                    <span style={{ color: "var(--mid)", fontSize: 22 }}>⌫</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+                </div>
+              </>
+            )}
 
-      {/* Bottom Nav */}
-      <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#08090d',borderTop:'1px solid #111116',display:'flex',justifyContent:'space-around',padding:'12px 0 20px'}}>
-        {[
-          {icon:'⊞',label:'Home',path:'/dashboard'},
-          {icon:'📞',label:'Dialler',path:'/dialler'},
-          {icon:'👥',label:'Contacts',path:'/contacts'},
-          {icon:'💬',label:'Messages',path:'/messages'},
-          {icon:'👤',label:'Profile',path:'/profile'},
-        ].map(n => (
-          <div key={n.label} onClick={() => navigate(n.path)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',cursor:'pointer',opacity:n.path==='/dialler'?1:0.4}}>
-            <span style={{fontSize:'1.1rem'}}>{n.icon}</span>
-            <span style={{fontFamily:'Share Tech Mono,monospace',fontSize:'7px',letterSpacing:'0.1em',color:'rgba(255,255,255,0.5)'}}>{n.label}</span>
+            {calling ? (
+              <button className="dial-end-btn" onClick={() => setCalling(false)}>✕ &nbsp; END CALL</button>
+            ) : (
+              <button className="dial-call-btn" onClick={() => dialVal && setCalling(true)}>📞 &nbsp; CALL</button>
+            )}
           </div>
-        ))}
+        </div>
       </div>
-    </div>
-  )
+    </>
+  );
 }
