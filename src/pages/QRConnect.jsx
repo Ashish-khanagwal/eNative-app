@@ -55,7 +55,7 @@ export default function QRConnect() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { navigate('/login'); return; }
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         if (error) throw error;
         setProfile(data);
       } catch (err) { setError(err.message); }
@@ -140,7 +140,7 @@ export default function QRConnect() {
     setSaving(true); setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: them, error: pErr } = await supabase.from('profiles').select('id,enumber,full_name,username,badge').eq('enumber', scannedContact.enumber).single();
+      const { data: them, error: pErr } = await supabase.from('profiles').select('id,enumber,full_name,username,badge').eq('enumber', scannedContact.enumber).maybeSingle();
       if (pErr || !them) throw new Error('User not found in eNative network.');
       if (them.id === user.id) throw new Error('You cannot add yourself as a contact.');
       const [r1, r2] = await Promise.all([
