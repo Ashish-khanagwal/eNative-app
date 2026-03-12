@@ -1,78 +1,142 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import BadgeIcon from '../components/BadgeIcon'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
+
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; background: #050507; }
+  .setup-wrap { min-height: 100vh; background: #050507; display: flex; align-items: center; justify-content: center; padding: 24px; font-family: 'Exo 2', sans-serif; }
+  .setup-card { width: 100%; max-width: 440px; background: #08090d; border: 1px solid #181820; border-radius: 24px; padding: 40px 32px; position: relative; overflow: hidden; }
+  .setup-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(192,132,252,0.07) 0%, transparent 60%); pointer-events: none; }
+  .setup-logo { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #c084fc, #60d8fa); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 20px; color: #fff; margin: 0 auto 24px; }
+  .setup-step { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.26); text-align: center; margin-bottom: 8px; }
+  .setup-title { font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 26px; color: rgba(255,255,255,0.93); text-align: center; margin-bottom: 6px; }
+  .setup-title span { color: #c084fc; }
+  .setup-sub { font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; margin-bottom: 32px; line-height: 1.5; }
+  .enumber-display { background: #0c0d12; border: 1px solid rgba(192,132,252,0.2); border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 24px; position: relative; overflow: hidden; }
+  .enumber-display::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(192,132,252,0.05) 0%, transparent 70%); pointer-events: none; }
+  .enumber-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.26); margin-bottom: 10px; }
+  .enumber-val { font-family: 'Share Tech Mono', monospace; font-size: 36px; color: #c084fc; letter-spacing: 0.1em; font-weight: 700; }
+  .enumber-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.12em; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(110,231,183,0.25); color: #6ee7b7; background: rgba(110,231,183,0.05); }
+  .enumber-dot { width: 5px; height: 5px; border-radius: 50%; background: #6ee7b7; animation: blink 2s infinite; }
+  .field-group { margin-bottom: 16px; }
+  .field-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.16em; color: rgba(255,255,255,0.26); margin-bottom: 8px; display: block; }
+  .field-input { width: 100%; background: #0c0d12; border: 1px solid #181820; border-radius: 12px; padding: 13px 16px; font-family: 'Exo 2', sans-serif; font-size: 14px; color: rgba(255,255,255,0.93); outline: none; transition: border-color 0.2s; }
+  .field-input:focus { border-color: rgba(192,132,252,0.4); }
+  .field-select { width: 100%; background: #0c0d12; border: 1px solid #181820; border-radius: 12px; padding: 13px 16px; font-family: 'Exo 2', sans-serif; font-size: 14px; color: rgba(255,255,255,0.93); outline: none; cursor: pointer; appearance: none; }
+  .claim-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: linear-gradient(135deg, #c084fc, #9333ea); color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 2px; cursor: pointer; margin-top: 8px; transition: all 0.2s; box-shadow: 0 4px 20px rgba(192,132,252,0.3); }
+  .claim-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(192,132,252,0.4); }
+  .claim-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error-msg { font-size: 12px; color: #ff5f7e; text-align: center; margin-top: 12px; }
+  .perma-note { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.26); text-align: center; margin-top: 16px; line-height: 1.6; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+`
+
+const AFRICAN_COUNTRIES = [
+  'South Africa','Nigeria','Kenya','Ghana','Ethiopia','Tanzania','Uganda','Rwanda',
+  'Zimbabwe','Zambia','Mozambique','Angola','Cameroon','Ivory Coast','Senegal',
+  'Mali','Burkina Faso','Niger','Chad','Sudan','Egypt','Morocco','Tunisia','Algeria',
+  'Libya','Botswana','Namibia','Malawi','Madagascar','Mauritius','Other'
+]
+
+function generateENumber() {
+  const num = Math.floor(Math.random() * 9000) + 1000
+  return `E-${num}`
+}
 
 export default function ProfileSetup() {
-  const [displayName, setDisplayName] = useState('')
+  const navigate = useNavigate()
+  const { user, refreshProfile } = useAuth()
+  const [fullName, setFullName] = useState('')
+  const [country, setCountry] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [enumber] = useState(generateENumber())
 
-  const handleSetup = async () => {
-    if (!displayName.trim()) return setError('Please enter a display name')
+  const handleClaim = async () => {
+    if (!fullName.trim()) return setError('Please enter your full name')
+    if (!country) return setError('Please select your country')
     setLoading(true)
     setError('')
+
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      const enumber = 'eN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2,5).toUpperCase()
-      const { error } = await supabase.from('profiles').upsert({
-        user_id: user.id,
-        full_name: displayName.trim(),
-        enumber,
-        is_verified: false,
-        updated_at: new Date().toISOString()
-      })
-      if (error) throw error
-      navigate('/contacts')
-    } catch (err) {
-      setError(err.message)
+      const { error: err } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName.trim(),
+          country,
+          enumber,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+
+      if (err) throw err
+      await refreshProfile()
+      navigate('/')
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
-    <div style={{minHeight:'100vh',background:'#050507',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px',fontFamily:"'Exo 2',sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');`}</style>
+    <>
+      <style>{css}</style>
+      <div className="setup-wrap">
+        <div className="setup-card">
+          <div className="setup-logo">en</div>
+          <div className="setup-step">STEP 1 OF 1 · CLAIM YOUR IDENTITY</div>
+          <div className="setup-title">Your <span>eNumber</span> awaits</div>
+          <div className="setup-sub">This is your permanent pan-African identity. It never changes, never gets recycled.</div>
 
-      <div style={{width:'100%',maxWidth:'400px'}}>
-        {/* Logo */}
-        <div style={{textAlign:'center',marginBottom:'40px'}}>
-          <div style={{width:'56px',height:'56px',borderRadius:'14px',background:'linear-gradient(135deg,#c084fc,#60d8fa)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Rajdhani,sans-serif',fontWeight:'800',fontSize:'22px',color:'#fff',margin:'0 auto 16px',boxShadow:'0 0 32px rgba(192,132,252,0.25)'}}>en</div>
-          <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:'800',fontSize:'1.4rem',color:'rgba(255,255,255,0.93)',marginBottom:'6px'}}>Set up your Native ID</div>
-          <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'10px',letterSpacing:'0.2em',color:'rgba(255,255,255,0.25)'}}>ONE TIME ONLY · PERMANENT</div>
-        </div>
+          <div className="enumber-display">
+            <div className="enumber-label">YOUR ENUMBER</div>
+            <div className="enumber-val">{enumber}</div>
+            <div className="enumber-badge">
+              <span className="enumber-dot" />
+              PERMANENT · VERIFIED · YOURS FOREVER
+            </div>
+          </div>
 
-        {/* Founder Badge Preview */}
-        <div style={{background:'#08090d',border:'1px solid rgba(192,132,252,0.15)',borderRadius:'16px',padding:'20px',marginBottom:'24px',display:'flex',alignItems:'center',gap:'14px'}}>
-          <BadgeIcon type="founder" size={20} />
-          <div>
-            <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'0.95rem',color:'#c084fc',marginBottom:'2px'}}>Founder eNative</div>
-            <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em'}}>SLOT #1 OF 1,000 · PERMANENT ID</div>
+          <div className="field-group">
+            <label className="field-label">FULL NAME</label>
+            <input
+              className="field-input"
+              placeholder="Your full name"
+              value={fullName}
+              onChange={e => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">COUNTRY</label>
+            <select
+              className="field-select"
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+            >
+              <option value="">Select your country</option>
+              {AFRICAN_COUNTRIES.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <button className="claim-btn" onClick={handleClaim} disabled={loading}>
+            {loading ? 'CLAIMING...' : `⚡ CLAIM ${enumber}`}
+          </button>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          <div className="perma-note">
+            🔒 Your eNumber is permanently assigned at claim.<br />
+            It will never be reassigned to another person.
           </div>
         </div>
-
-        {/* Display Name */}
-        <div style={{marginBottom:'12px'}}>
-          <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',letterSpacing:'0.2em',color:'rgba(255,255,255,0.3)',marginBottom:'8px'}}>DISPLAY NAME</div>
-          <input
-            placeholder="How should we call you?"
-            value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
-            style={{width:'100%',padding:'14px 16px',background:'#0c0d12',border:'1px solid #1a1a24',borderRadius:'12px',color:'rgba(255,255,255,0.93)',fontFamily:"'Exo 2',sans-serif",fontSize:'0.9rem',outline:'none'}}
-          />
-        </div>
-
-        {error && <div style={{color:'#ff5f7e',fontSize:'0.78rem',marginBottom:'12px',textAlign:'center'}}>{error}</div>}
-
-        <button onClick={handleSetup} disabled={loading} style={{width:'100%',padding:'15px',background:'linear-gradient(135deg,#c084fc,#60d8fa)',border:'none',borderRadius:'12px',color:'#050507',fontFamily:'Rajdhani,sans-serif',fontWeight:'700',fontSize:'1rem',letterSpacing:'0.08em',cursor:'pointer',opacity:loading?0.6:1}}>
-          {loading ? 'SETTING UP...' : 'CLAIM MY ENATIVE ID'}
-        </button>
-
-        <div style={{fontFamily:'Share Tech Mono,monospace',fontSize:'9px',letterSpacing:'0.1em',color:'rgba(255,255,255,0.15)',textAlign:'center',marginTop:'16px',lineHeight:'1.8'}}>
-          Your eNumber will be generated automatically.<br/>This cannot be changed after setup.
-        </div>
       </div>
-    </div>
+    </>
   )
 }
