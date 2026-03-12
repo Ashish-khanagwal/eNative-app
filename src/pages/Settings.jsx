@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import Sidebar from "../components/Sidebar";
 
 const css = `
@@ -46,6 +47,9 @@ function Toggle({ on, onToggle }) {
 }
 
 export default function Settings() {
+  const { signOut } = useAuth()
+  const navigate = useNavigate()
+  const handleSignOut = async () => { await signOut(); navigate("/login") }
   const navigate = useNavigate();
   const [toggles, setToggles] = useState({
     aiQuality: true,
@@ -152,7 +156,7 @@ export default function Settings() {
               <div className="danger-row">
                 <div className="s-icon" style={{ background: "rgba(255,95,126,0.1)" }}>🚪</div>
                 <div>
-                  <div className="danger-label">Sign Out</div>
+                  <div className="danger-label" onClick={handleSignOut} style={{cursor:"pointer"}}>Sign Out</div>
                   <div className="danger-desc">Sign out of your eNative account</div>
                 </div>
               </div>
