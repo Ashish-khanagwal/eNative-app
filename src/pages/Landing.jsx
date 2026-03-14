@@ -212,6 +212,7 @@ export default function Landing() {
     return () => observer.disconnect()
   }, [])
 const handleWaitlist = async (e) => {
+const handleWaitlist = async (e) => {
   e.preventDefault()
   const input = e.target.querySelector('input')
   const email = input?.value
@@ -224,7 +225,7 @@ const handleWaitlist = async (e) => {
       alert('Something went wrong, please try again.')
       console.error(error)
     } else {
-      await supabase.functions.invoke('smart-api', {
+      await supabase.functions.invoke('send-waitlist-email', {
         body: { email }
       })
       alert(`You're on the list! Check your inbox at ${email}`)
