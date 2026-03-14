@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
-
+import { supabase } from '../lib/supabase'
 const css = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -211,15 +211,24 @@ export default function Landing() {
     els?.forEach(el => observer.observe(el))
     return () => observer.disconnect()
   }, [])
-
-  const handleWaitlist = (e) => {
-    e.preventDefault()
-    const input = e.target.querySelector('input')
-    if (input?.value) {
-      alert(`You're on the list! We'll be in touch at ${input.value}`)
+const handleWaitlist = async (e) => {
+  e.preventDefault()
+  const input = e.target.querySelector('input')
+  const email = input?.value
+  if (email) {
+    const { error } = await supabase
+      .from('waitlist')
+      .insert({ email })
+    
+    if (error) {
+      alert('Something went wrong, please try again.')
+      console.error(error)
+    } else {
+      alert(`You're on the list! We'll be in touch at ${email}`)
       input.value = ''
     }
   }
+}
 
   return (
     <>
