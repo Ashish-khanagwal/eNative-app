@@ -212,7 +212,6 @@ export default function Landing() {
     return () => observer.disconnect()
   }, [])
 const handleWaitlist = async (e) => {
-const handleWaitlist = async (e) => {
   e.preventDefault()
   const input = e.target.querySelector('input')
   const email = input?.value
