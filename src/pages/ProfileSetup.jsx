@@ -98,8 +98,7 @@ export default function ProfileSetup() {
           country,
           enumber
         }, { onConflict: 'user_id' })
-      if (err) throw err
-      await refreshProfile()
+      if (err) throw er
       navigate('/dashboard')
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.')
