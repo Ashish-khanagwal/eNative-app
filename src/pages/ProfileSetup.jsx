@@ -127,7 +127,7 @@ export default function ProfileSetup() {
           <div className="setup-logo">en</div>
           <div className="setup-step">STEP 1 OF 1 · CLAIM YOUR IDENTITY</div>
           <div className="setup-title">Your <span>eNumber</span> awaits</div>
-          <div className="setup-sub"><div className="setup-sub">One identity. Every country. Yours forever.</div>
+          <div className="setup-sub">One identity. Every country. Yours forever.</div>
           <div className="enumber-display">
             <div className="enumber-label">YOUR ENUMBER</div>
             <div className="enumber-val">{enumber}</div>
